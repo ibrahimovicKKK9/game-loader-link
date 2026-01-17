@@ -569,13 +569,8 @@ Window:EditOpenButton({
 })
 
 Window:Tag({
-    Title = "v1.0.0",
+    Title = "v2.4.5",
     Color = Color3.fromHex("#30ff6a"),
-    Radius = 13, -- from 0 to 13
-})
-Window:Tag({
-    Title = "IN DEV",
-    Color = Color3.fromHex("#ff0000"),
     Radius = 13, -- from 0 to 13
 })
 
@@ -1141,4 +1136,3 @@ TeleportTab:Dropdown({
         
     end
 })
-
