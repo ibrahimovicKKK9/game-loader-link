@@ -1,21 +1,4 @@
--- Library
-local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
-local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
-local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
-local Options = Library.Options
-local Toggles = Library.Toggles
-local ImageManager = Library.ImageManager
-
--- Add Icon
-ImageManager.AddAsset("Nusantablox", 133739520556173, "https://i.ibb.co.com/XrCRJ16f/Nusantablox.jpg")
-local Nusantablox = ImageManager.GetAsset("Nusantablox")
-
--- Notify
-Library:Notify({
-     Title = "NusantaBlox",
-     Description = "Press K to open menu",
-     Time = 4,
-})
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
 -----------------------------------------------ESPSYSTEM
 -- CLEANUP
@@ -39,9 +22,10 @@ local VirtualUser = game:GetService("VirtualUser")
 local Camera = workspace.CurrentCamera
 local LocalPlayer = game:GetService("Players").LocalPlayer
 local Lighting = game:GetService("Lighting")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Player = game.Players.LocalPlayer
-local RemotesFolder = ReplicatedStorage:WaitForChild("Remotes") -- Menunggu folder Remotes muncul
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RemotesFolder = ReplicatedStorage:WaitForChild("Remotes")
+
 
 
 local ESPFolder = Instance.new("Folder", game.CoreGui)
@@ -206,7 +190,7 @@ Players.PlayerAdded:Connect(function(p)
 end)
 -----------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------
-_G.SmoothSpeed = 21 -- Nilai 20-30 biasanya sudah sangat pas untuk "Smooth"
+_G.SmoothSpeed = 1 -- Nilai 20-30 biasanya sudah sangat pas untuk "Smooth"
 _G.SpeedEnabled = false
 
 RunService.RenderStepped:Connect(function(deltaTime)
@@ -229,32 +213,20 @@ RunService.RenderStepped:Connect(function(deltaTime)
 end)
 -----------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------
--- Logic
 local noclip = false
-local player = game.Players.LocalPlayer
-local character, humanoidRootPart
 
--- NoClip
-game:GetService("RunService").Stepped:Connect(function()
-	if noclip then
-		character = player.Character
-		if character then
-			for _, part in pairs(character:GetDescendants()) do
-				if part:IsA("BasePart") and part.CanCollide then
-					part.CanCollide = false
-				end
-			end
-		end
-	else
-		character = player.Character
-		if character then
-			for _, part in pairs(character:GetDescendants()) do
-				if part:IsA("BasePart") then
-					part.CanCollide = true
-				end
-			end
-		end
-	end
+RunService.Stepped:Connect(function()
+    if noclip then
+        local char = Player.Character
+        if char then
+            for _, part in pairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end
+    -- Tidak perlu pakai 'else', biarkan Roblox yang urus tabrakan normalnya
 end)
 ----------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------
@@ -267,11 +239,8 @@ local AntiAFK_Enabled = true
 -- Event 'Idled' akan terpanggil otomatis oleh Roblox jika kamu diam selama 2-5 menit
 LocalPlayer.Idled:Connect(function()
     if AntiAFK_Enabled then
-        -- Simulasi input agar server menganggap kita masih aktif
         VirtualUser:CaptureController()
         VirtualUser:ClickButton2(Vector2.new(0, 0)) -- Klik kanan
-        
-        warn("Anti-AFK: Sinyal aktivitas dikirim! (Ceklis Aktif)")
     else
     end
 end)
@@ -487,605 +456,688 @@ task.spawn(function()
 end)
 -----------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------
--- TOGGLES (Hubungkan ke UI kamu)
-_G.AutoGenerator = false 
+-- // 1. BOOLEAN / VARIABLES (Taruh di bagian paling atas script)
+_G.AutoGenerator = false
 _G.AutoHealing = false
 
--- // FUNGSI AUTO SUCCESS (Disesuaikan dengan Log Cobalt)
-local function SolveSkillCheck(eventObject)
+local function JalankanAutoSuccess(eventObject)
+    -- Kita cek apakah fiturnya sedang dinyalakan (Boolean Check)
+    if not (_G.AutoGenerator or _G.AutoHealing) then return end
+
     local folder = eventObject.Parent
     if not folder then return end
     
     local folderName = folder.Name:lower()
-    -- Gunakan nama sesuai temuan: SkillCheckResultEvent
     local resultRemote = folder:FindFirstChild("SkillCheckResultEvent") 
     
     if resultRemote then
-        -- Berdasarkan Cobalt: Mengirim "success", 1, dan object target
-        -- Kita tiru argumen tersebut agar server tidak curiga
+        -- Jeda sedikit agar tidak instan (menghindari deteksi server)
+        task.wait(0.15) 
+
+        -- Cek apakah ini Skillcheck Generator atau Healing
         if string.find(folderName, "generator") and _G.AutoGenerator then
-            resultRemote:FireServer("success", 1) 
-            warn(">>> Cobalt Bypass: Generator Success Sent")
+            resultRemote:FireServer("success", 1) -- Mengirim sinyal sukses
+            warn(">>> [NusantaBlox] Auto Success: Generator")
+            
         elseif string.find(folderName, "healing") and _G.AutoHealing then
             resultRemote:FireServer("success", 1)
-            warn(">>> Cobalt Bypass: Healing Success Sent")
+            warn(">>> [NusantaBlox] Auto Success: Healing")
         end
     end
 end
 
--- // METATABLE HOOKING (Mencegat Gagal & Memperbaiki Nama)
-local mt = getrawmetatable(game)
-local (mt, false)
-oldNamecall = mt.__namecall
-setreadonly
-mt.__namecall = newcclosure(function(self, ...)
-    local method = getnamecallmethod()
-    local args = {...}
-
-    if method == "FireServer" and _G.AutoGenerator then
-        -- Blokir jika game mencoba mengirim sinyal gagal
-        if self.Name == "SkillCheckFailEvent" then
-            return nil
-        end
-
-        -- Jika player telat pencet, kita paksa argumennya sesuai data Cobalt
-        if self.Name == "SkillCheckResultEvent" then
-            args[1] = "success"
-            args[2] = 100
-            return oldNamecall(self, unpack(args))
-        end
-    end
-
-    return oldNamecall(self, ...)
-end)
-setreadonly(mt, true)
-
--- // LISTENER
+-- // 3. LISTENER (Mendeteksi munculnya Skillcheck)
+-- Loop ini akan otomatis jalan di background
 for _, subFolder in pairs(RemotesFolder:GetChildren()) do
     local startEvent = subFolder:FindFirstChild("SkillCheckEvent")
     if startEvent then
         startEvent.OnClientEvent:Connect(function()
-            SolveSkillCheck(startEvent)
+            JalankanAutoSuccess(startEvent)
         end)
     end
 end
------------------------------------------------------------------------------------
------------------------------------------------------------------------------------
------------------------------------------------------------------------------------
------------------------------------------------------------------------------------
------------------------------------------------------------------------------------
------------------------------------------------------------------------------------
--- ========== Window Setting ==========
-local Window = Library:CreateWindow({
-    Title = "Nusantablox",
-    Icon = 133739520556173,
-    Footer = "Violence District | IN DEV",
-    NotifySide = "Right",
-    ShowCustomCursor = false,
-    ToggleKeybind = Enum.KeyCode.K,
-    AutoShow = true,
-    DisableSearch = true,
-})
+---------------------------------------------------------------------------
+---------------------------------------------------------------------------
+local hitbox_Enable = false
+local transparency_hitbox = 0.95
+local hitbox_size = 10
 
--- ========== Tabs ==========
-local DraggableLabel = Library:AddDraggableLabel("Obsidian demo")
-DraggableLabel:SetVisible(true)
- 
-local FrameTimer = tick()
-local FrameCounter = 0;
-local FPS = 60;
- 
-local WatermarkConnection = game:GetService('RunService').RenderStepped:Connect(function()
-    FrameCounter += 1;
- 
-    if (tick() - FrameTimer) >= 1 then
-        FPS = FrameCounter;
-        FrameTimer = tick();
-        FrameCounter = 0;
-    end;
- 
-    DraggableLabel:SetText(('NusatanBlox | %s fps | user'):format(
-        math.floor(FPS)
-    ));
-end);
-
-local Tabs = {
-    Survivor = Window:AddTab("Survivor", "user-check"),
-    Killer = Window:AddTab("Killer", "sword"),
-    Main = Window:AddTab("Main", "crown"),
-    ESP = Window:AddTab("ESP", "eye"),
-    Player = Window:AddTab("Player", "user"),
-    Teleport = Window:AddTab("Teleport", "box"),
-    Client = Window:AddTab("Client", "settings"),
-}
-
--------------------------SURVIVOR
-local SurvivorTab = Tabs.Survivor
-
-local GeneratorGroupBox = SurvivorTab:AddLeftGroupbox("Feature Generator")
-local HealGroupBox = SurvivorTab:AddRightGroupbox("Feature Heal")
-local SurvivalOtherGroupBox = SurvivorTab:AddLeftGroupbox("Other Feature")
----------------GENERATOR
-GeneratorGroupBox:AddToggle("AutoSkillCheckPerfect", {
-	Text = "Auto SkillCheck (Perfect)",
-	Default = false,
-})
-
-Toggles.AutoSkillCheckPerfect:OnChanged(function(state)
-    _G.AutoGenerator = state
-end)
-GeneratorGroupBox:AddToggle("AutoSkillCheckNotPerfect", {
-	Text = "Auto SkillCheck (Not Perfect)",
-	Default = false,
-})
-  
-Toggles.AutoSkillCheckNotPerfect:OnChanged(function(state)
-    
-end)
--------------HEAL
-HealGroupBox:AddToggle("AutoSkillCheckPerfectHEAL", {
-	Text = "Auto SkillCheck (Perfect)",
-	Default = false,
-})
-  
-Toggles.AutoSkillCheckPerfectHEAL:OnChanged(function(state)
-    _G.AutoHealing = state
-end)
-HealGroupBox:AddToggle("AutoSkillCheckNotPerfectHEAL", {
-	Text = "Auto SkillCheck (Not Perfect)",
-	Default = false,
-})
-  
-Toggles.AutoSkillCheckNotPerfectHEAL:OnChanged(function(state)
-    
-end)
----------------OTHERSURVIVOR
-SurvivalOtherGroupBox:AddButton({
-    Text = "Fling Killer",
-    Func = function()
-        
-    end
-})
-----------------------------------------------------------------------
-----------------------------------------------------------------------
-
--------------------------KILLER
-local KillerTab = Tabs.Killer
-
---------------------TAB
-local KillerGroupBox = KillerTab:AddLeftGroupbox("Feature Killer")
-local KillerOtherGroupBox = KillerTab:AddLeftGroupbox("Other Feature")
-local KillerFunGroupBox = KillerTab:AddRightGroupbox("Feature Fun")
-local KillerHitboxGroupBox = KillerTab:AddRightGroupbox("Feature Hitbox")
-
-------------------------KILLER
-KillerGroupBox:AddButton({
-    Text = "Kill All",
-    Func = function()
-        
-    end
-})
-------------------------FUN
-KillerFunGroupBox:AddToggle("AutoAttack", {
-	Text = "Auto Attack (No Animation)",
-	Default = false,
-})
-  
-Toggles.AutoAttack:OnChanged(function(state)
-    
-end)
-------------------------KILLER OTHER
-KillerOtherGroupBox:AddToggle("NoFlashlight", {
-	Text = "No Flashlight",
-	Default = false,
-})
-  
-Toggles.NoFlashlight:OnChanged(function(state)
-    
-end)
-KillerOtherGroupBox:AddToggle("RemovePalletAll", {
-	Text = "Delete/Remove Pallet (All)",
-	Default = false,
-})
-  
-Toggles.RemovePalletAll:OnChanged(function(state)
-    
-end)
-KillerOtherGroupBox:AddButton({
-    Text = "Third Person Camera Killer",
-    Func = function()
-        print("Button clicked!")
-    end
-})
-------------------------HITBOX
-KillerHitboxGroupBox:AddInput("MyPseudoCodeInput", {
-    Text = "Set Transparency Box",
-    Default = "0.95",
-    Placeholder = "...",
-    Callback = function(value)
-        
-    end
-})
-KillerHitboxGroupBox:AddInput("MyPseudoCodeInput", {
-    Text = "Set Size(box)",
-    Default = "1.5",
-    Placeholder = "...",
-    Callback = function(value)
-        
-    end
-})
-KillerHitboxGroupBox:AddToggle("Hitbox", {
-	Text = "Enable Hitbox",
-	Default = false,
-})
-  
-Toggles.Hitbox:OnChanged(function(state)
-    
-end)
--------------------------------------------------------------
-
-------------------------MAIN
-local MainTab = Tabs.Main
-
-------------------TABS
-local BypassGroupBox = MainTab:AddLeftGroupbox("Feature Bypass")
-local VisualGroupBox = MainTab:AddRightGroupbox("Feature Visual")
-local MiscGroupBox = MainTab:AddLeftGroupbox("Misc")
-
-------------------BYPASS
-BypassGroupBox:AddToggle("OpenGate", {
-	Text = "Bypass Gate (Open Gate)",
-	Default = false,
-})
-  
-Toggles.OpenGate:OnChanged(function(state)
-    _G.BypassGate = state
-end)
-------------------VISUAL
-VisualGroupBox:AddToggle("FullBright", {
-	Text = "Full Bright",
-	Default = false,
-})
-  
-Toggles.FullBright:OnChanged(function(state)
-    _G.FullBright_Enabled = state
-end)
-VisualGroupBox:AddToggle("NoFog", {
-	Text = "No Fog (Hapus Kabut)",
-	Default = false,
-})
-  
-Toggles.NoFog:OnChanged(function(state)
-    _G.NoFog_Enabled = state
-end)
-------------------MISC
-MiscGroupBox:AddToggle("AntiAfk", {
-	Text = "Anti-AFK",
-	Default = true,
-})
-  
-Toggles.AntiAfk:OnChanged(function(state)
-    AntiAFK_Enabled = state
-end)
-----------------------------------------------------
-
--------------------------ESP
-local ESPTab = Tabs.ESP
-
-------------------TABS
-local ESPGroupBox = ESPTab:AddLeftGroupbox("Feature ESP")
-local RoleGroupBox = ESPTab:AddLeftGroupbox("ESP Role")
-local ESPEventGroupBox = ESPTab:AddLeftGroupbox("ESP Event")
-local EngineGroupBox = ESPTab:AddRightGroupbox("ESP Engine")
-local ObjectGroupBox = ESPTab:AddRightGroupbox("ESP Object")
-local ESPSettingsGroupBox = ESPTab:AddRightGroupbox("ESP Settings")
-
-------------------ESP
-ESPGroupBox:AddToggle("EnableESP", {
-	Text = "Enable ESP",
-	Default = false,
-})
-  
-Toggles.EnableESP:OnChanged(function(state)
-    _G.ESP_ENABLED = state
-    _G.Master_ObjectESP = state 
-end)
-------------------ROLE
-RoleGroupBox:AddToggle("ESPSurvivor", {
-	Text = "ESP Survivor",
-	Default = false,
-})
-  
-Toggles.ESPSurvivor:OnChanged(function(state)
-    _G.ESP_TEAM = state
-end)
-RoleGroupBox:AddToggle("ESPKiller", {
-	Text = "ESP Killer",
-	Default = false,
-})
-  
-Toggles.ESPKiller:OnChanged(function(state)
-    _G.ESP_ENEMY = state
-end)
-------------------ENGINE
-EngineGroupBox:AddToggle("ESPGenerator", {
-	Text = "ESP Generator",
-	Default = false,
-})
-  
-Toggles.ESPGenerator:OnChanged(function(state)
-    TargetConfigs["Generator"].Enabled = state
-end)
-EngineGroupBox:AddToggle("ESPGate", {
-	Text = "ESP Gate",
-	Default = false,
-})
-  
-Toggles.ESPGate:OnChanged(function(state)
-    TargetConfigs["Gate"].Enabled = state
-end)
-------------------OBJECT
-ObjectGroupBox:AddToggle("ESPPallet", {
-	Text = "ESP Pallet",
-	Default = false,
-})
-  
-Toggles.ESPPallet:OnChanged(function(state)
-    TargetConfigs["Palletwrong"].Enabled = state
-end)
-ObjectGroupBox:AddToggle("ESPHook", {
-	Text = "ESP Hook",
-	Default = false,
-})
-  
-Toggles.ESPHook:OnChanged(function(state)
-    TargetConfigs["Hook"].Enabled = state
-end)
-ObjectGroupBox:AddToggle("ESPWindow", {
-	Text = "ESP Window",
-	Default = false,
-})
-  
-Toggles.ESPWindow:OnChanged(function(state)
-    TargetConfigs["Window"].Enabled = state
-end)
-------------------EVENT
-ESPEventGroupBox:AddToggle("ESPEventTest1", {
-	Text = "ESP Tree",
-	Default = false,
-})
-  
-Toggles.ESPEventTest1:OnChanged(function(state)
-    TargetConfigs["ChristmasTree"].Enabled = state
-end)
-ESPEventGroupBox:AddToggle("ESPEventTest2", {
-	Text = "ESP Gift",
-	Default = false,
-})
-  
-Toggles.ESPEventTest2:OnChanged(function(state)
-    TargetConfigs["Gift"].Enabled = state
-end)
-
-------------------SETTINGS
-ESPSettingsGroupBox:AddToggle("ESPName", {
-	Text = "ESP Name",
-	Default = true,
-})
-  
-Toggles.ESPName:OnChanged(function(state)
-    _G.ESP_NAME = state
-end)
-ESPSettingsGroupBox:AddToggle("ESPBox", {
-	Text = "ESP Box",
-	Default = true,
-})
-  
-Toggles.ESPBox:OnChanged(function(state)
-    _G.ESP_DRAWING_BOX = state
-end)
-ESPSettingsGroupBox:AddToggle("ESPTracers", {
-	Text = "ESP Tracers",
-	Default = true,
-})
-  
-Toggles.ESPTracers:OnChanged(function(state)
-    _G.ESP_TRACERS = state
-end)
-ESPSettingsGroupBox:AddToggle("ESPDistance", {
-	Text = "ESP Distance",
-	Default = true,
-})
-
-Toggles.ESPDistance:OnChanged(function(state)
-    _G.ESP_DISTANCE = state
-end)
-ESPSettingsGroupBox:AddToggle("ESPHighlight", {
-	Text = "ESP Highlight",
-	Default = true,
-})
-  
-Toggles.ESPHighlight:OnChanged(function(state)
-    _G.ESP_HIGHLIGHT = state
-end)
-ESPSettingsGroupBox:AddToggle("ESPHealthBar", {
-	Text = "ESP HealthBar",
-	Default = true,
-})
-  
-Toggles.ESPHealthBar:OnChanged(function(state)
-    _G.ESP_HEALTHBAR = state
-end)
--------------------------------------------------
-
--------------------------PLAYER
-local PlayerTab = Tabs.Player
-
-------------------TABS
-local PlayerGroupBox = PlayerTab:AddLeftGroupbox("Feature Player")
-local VisualGroupBox = PlayerTab:AddLeftGroupbox("Feature Visual")
-local PowerGroupBox = PlayerTab:AddRightGroupbox("Feature Power")
-
-------------------PLAYER
-PlayerGroupBox:AddSlider("SpeedValue", {
-    Text = "Set Speed",
-    Default = 1,
-    Min = 0,
-    Max = 125,
-    Rounding = 0,
-})
-
-Options.SpeedValue:OnChanged(function(value)
-    _G.SmoothSpeed = value
-end)
-PlayerGroupBox:AddToggle("EnableSpeed", {
-	Text = "Enable Speed",
-	Default = false,
-})
-  
-Toggles.EnableSpeed:OnChanged(function(state)
-    _G.SpeedEnabled = state
-end)
-------------------POWER
-PowerGroupBox:AddToggle("NoClip", {
-	Text = "No Clip",
-	Default = false,
-})
-  
-Toggles.NoClip:OnChanged(function(state)
-    noclip = state
-end)
-PowerGroupBox:AddToggle("NoFall", {
-	Text = "No Fall",
-	Default = false,
-})
-  
-Toggles.NoFall:OnChanged(function(state)
-
-end)
-------------------VISUAL
-VisualGroupBox:AddSlider("FieldoFView", {
-    Text = "Set FOV Value",
-    Default = 70,
-    Min = 0,
-    Max = 250,
-    Rounding = 0,
-})
-
-Options.SpeedValue:OnChanged(function(value)
-    FOV_Amount = value
-end)
-VisualGroupBox:AddToggle("SetFov", {
-	Text = "Enable FieldOfView",
-	Default = false,
-})
-  
-Toggles.SetFov:OnChanged(function(state)
-    FOV_Enabled = state
-end)
---------------------------------------------
-
--------------------------TELEPORT
-local TeleportTab = Tabs.Teleport
-
-------------------TABS
-local TeleportPlayerGroupBox = TeleportTab:AddLeftGroupbox("Feature Teleport Player")
-local TeleportPlaceGroupBox = TeleportTab:AddRightGroupbox("Feature Teleport Place")
-
---------------------PLAYERTELEPORT
-TeleportPlayerGroupBox:AddInput("TeleportPlayer", {
-    Text = "Nickname Players",
-    Default = "",
-    Placeholder = "Nickname...",
-    Callback = function(value)
-        targetName = value
-        target = Players:FindFirstChild(targetName)
-    end
-})
-TeleportPlayerGroupBox:AddButton({
-    Text = "Teleport to Player",
-    Func = function()
-        if not target then
-            for i,v in pairs(Players:GetPlayers()) do if v.DisplayName==targetName then target=v break end end
-        end
-        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-            hrp.CFrame = target.Character.HumanoidRootPart.CFrame + Vector3.new(0,5,0)
+RunService.RenderStepped:Connect(function()
+    -- Loop ke semua pemain di dalam game
+    for _, targetPlayer in ipairs(Players:GetPlayers()) do
+        -- Pastikan kita tidak memperbesar badan sendiri dan karakter target ada
+        if targetPlayer ~= LocalPlayer and targetPlayer.Character then
+            local hrp = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+            
+            if hrp then
+                if hitbox_Enable then
+                    -- LIVE UPDATE: Otomatis berubah saat slider/toggle digeser
+                    hrp.Size = Vector3.new(hitbox_size, hitbox_size, hitbox_size)
+                    hrp.Transparency = transparency_hitbox
+                    hrp.CanCollide = false -- Agar tidak tabrakan saat kita dekat musuh
+                    hrp.Color = Color3.fromRGB(255, 0, 0) -- Opsional: Ubah warna jadi merah
+                else
+                    -- RESET: Kembalikan ke ukuran asli jika OFF
+                    hrp.Size = Vector3.new(2, 2, 1)
+                    hrp.Transparency = 1 -- Default HRP biasanya transparan total
+                    hrp.CanCollide = true
+                end
+            end
         end
     end
+end)
+---------------------------------------------------------------------------
+---------------------------------------------------------------------------
+---------------------------------------------------------------------------
+---------------------------------------------------------------------------
+local Window = WindUI:CreateWindow({
+    Title = "Violence Distric",
+    Icon = "globe", -- lucide icon
+    Author = "NusantaBlox",
+    Folder = "Nusantablox",
+    
+    Size = UDim2.fromOffset(580, 460),
+    MinSize = Vector2.new(560, 350),
+    MaxSize = Vector2.new(850, 560),
+    Transparent = true,
+    Theme = "Dark",
+    Resizable = true,
+    SideBarWidth = 200,
+    BackgroundImageTransparency = 0.42,
+    HideSearchBar = true,
+    ScrollBarEnabled = false,
+
+    User = {
+        Enabled = true,
+        Anonymous = false,
+    },
 })
---------------------PLACETELEPORT
-TeleportPlaceGroupBox:AddDropdown("MyDropdown", {
-    Values = { "Game", "Lobby" },
-    Default = "Game",
-    Multi = false,
-    Text = "Place:",
+
+
+Window:EditOpenButton({
+    Title = "Open/Close Menu",
+    Icon = "minimize-2",
+    CornerRadius = UDim.new(0,16),
+    StrokeThickness = 2,
+    Color = ColorSequence.new( -- gradient
+        Color3.fromHex("FFFFFF"), 
+        Color3.fromHex("000000")
+    ),
+    OnlyMobile = false,
+    Enabled = true,
+    Draggable = true,
 })
-TeleportPlaceGroupBox:AddButton({
-    Text = "Teleport to Place",
-    Func = function()
+
+Window:Tag({
+    Title = "v1.0.0",
+    Color = Color3.fromHex("#30ff6a"),
+    Radius = 13, -- from 0 to 13
+})
+Window:Tag({
+    Title = "IN DEV",
+    Color = Color3.fromHex("#ff0000"),
+    Radius = 13, -- from 0 to 13
+})
+
+WindUI:Notify({
+    Title = "Connection Info!",
+    Content = "Script Succesfuly Loaded!",
+    Duration = 3.8, -- 3 seconds
+    Icon = "cloud-check",
+})
+
+-- Tabs
+local AboutTab = Window:Tab({
+    Title = "About",
+    Icon = "info", -- optional
+    Locked = false,
+})
+Window:Divider()
+local SurvivorTab = Window:Tab({
+    Title = "Survivor",
+    Icon = "user-check", -- optional
+    Locked = false,
+})
+local KillerTab = Window:Tab({
+    Title = "Killer",
+    Icon = "sword", -- optional
+    Locked = false,
+})
+Window:Divider()
+local MainTab = Window:Tab({
+    Title = "Main",
+    Icon = "crown", -- optional
+    Locked = false,
+})
+local EspTab = Window:Tab({
+    Title = "ESP",
+    Icon = "eye", -- optional
+    Locked = false,
+})
+local PlayerTab = Window:Tab({
+    Title = "Player",
+    Icon = "user", -- optional
+    Locked = false,
+})
+local TeleportTab = Window:Tab({
+    Title = "Teleport",
+    Icon = "map-pin", -- optional
+    Locked = false,
+})
+
+--
+AboutTab:Paragraph({
+    Title = "NusantaBlox | 🇮🇩",
+    Desc = "Main Founder: @ibrahimovick77",
+    Image = "https://i.ibb.co.com/XrCRJ16f/Nusantablox.jpg",
+    ImageSize = 30,
+    Thumbnail = "https://cdn.discordapp.com/attachments/1436182349988630528/1459525069553532989/WhatsApp_Image_2026-01-09_at_18.23.21.jpeg?ex=696b8125&is=696a2fa5&hm=5f7f44392c2482dad1c548cd367643aebdc110fd3ffbf57efc609cd4a65d63eb",
+    ThumbnailSize = 80,
+})
+AboutTab:Button({
+    Title = "Youtube | Support Youtube Channel",
+    IconAlign = "Left", -- Left or Right of the text
+    Icon = "youtube", -- removing icon
+    Callback = function()
+        syn.open_url("https://www.youtube.com/@ibrahimk2709")
+    end
+})
+AboutTab:Button({
+    Title = "Instagram | Support Instagram",
+    IconAlign = "Left", -- Left or Right of the text
+    Icon = "instagram", -- removing icon
+    Callback = function()
+        syn.open_url("https://instagram.com")
+    end
+})
+AboutTab:Button({
+    Title = "Join Discord Now!! for new Update Info",
+    IconAlign = "Left", -- Left or Right of the text
+    Icon = "bot", -- removing icon
+    Callback = function()
         
     end
 })
--------------------------------------------------------------------------------------------------------------------------
 
--- ========== Client Tab ==========
-local ClientGroupLeft = Tabs.Client:AddLeftGroupbox("Menu", "wrench")
-
--- Notification
-ClientGroupLeft:AddDropdown("NotificationSide", {
-    Values = { "left", "right" },
-    Default = "right",
-    Text = "Notification Side",
-    Callback = function(Value)
-        Library:SetNotifySide(Value)
-    end,
+-----------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------
+-----------------------------SURVIVOR
+SurvivorTab:Section({ 
+    Title = "Features Generator",
+    Icon = "heater",
+    TextSize = 17,
 })
-
--- DPI
-ClientGroupLeft:AddDropdown("DPIDropdown", {
-    Values = { "50%", "75%", "100%", "125%", "150%", "175%", "200%" },
-    Default = "100%",
-
-    Text = "DPI Scale",
-
-    Callback = function(Value)
-        Value = Value:gsub("%%", "")
-        local DPI = tonumber(Value)
-
-        Library:SetDPIScale(DPI)
-     end,
+SurvivorTab:Toggle({
+    Title = "Auto SkillCheck (Perfect)",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state) 
+        _G.AutoGenerator = state
+    end
 })
-
-ClientGroupLeft:AddDivider() -- Divider
-
--- Keybind
-ClientGroupLeft:AddLabel("Open/Close Menu"):AddKeyPicker("MenuKeybind", { Default = "K", NoUI = true, Text = "Open/Close Menu" })
-Library.ToggleKeybind = Options.MenuKeybind
-
--- Unload/Self Destruct
-ClientGroupLeft:AddButton("Self Destruct", function()
-    print("Client has been destructed")
-    _G.ESP_ENABLED = false
-    _G.ESP_TEAM = false
-    _G.ESP_ENEMY = false
-    _G.ESP_NAME = false
-    _G.ESP_BOX = false          -- GUI Box
-    _G.ESP_DRAWING_BOX = false  -- Drawing Box (Gaya script orang tadi)
-    _G.ESP_TRACERS = false     -- Tracer (Gaya script orang tadi)
-    _G.ESP_DISTANCE = false
-    _G.ESP_HIGHLIGHT = false
-    _G.ESP_HEALTHBAR = false
-    _G.Master_ObjectESP = false
-
-    _G.AutoGenerator = false 
-    _G.AutoHealing = false
-
-    _G.BypassGate = false
-
-    _G.FullBright_Enabled = false
-    _G.NoFog_Enabled = false
-
-    AntiAFK_Enabled = false
-    noclip = false
-    Library:Unload()
-end)
+SurvivorTab:Section({ 
+    Title = "Features Heal",
+    Icon = "briefcase-medical",
+    TextSize = 17,
+})
+SurvivorTab:Toggle({
+    Title = "Auto SkillCheck (Perfect)",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state) 
+        _G.AutoHealing = state
+    end
+})
+SurvivorTab:Section({ 
+    Title = "Features Cheat",
+    Icon = "biohazard",
+    TextSize = 17,
+})
+SurvivorTab:Button({
+    Title = "Fling Killer",
+    Desc = "",
+    Locked = false,
+    Callback = function()
+        -- ...
+    end
+})
+SurvivorTab:Button({
+    Title = "Self UnHook (Not 100% but next time i try 100%)",
+    Desc = "",
+    Locked = false,
+    Callback = function()
+        -- ...
+    end
+})
+-----------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------
+-----------------------------KILLER
+KillerTab:Section({ 
+    Title = "Features Killer",
+    Icon = "swords",
+    TextSize = 17,
+})
+KillerTab:Toggle({
+    Title = "Kill All",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state) 
+        
+    end
+})
+KillerTab:Toggle({
+    Title = "Auto Attack (No Animation)",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state) 
+        
+    end
+})
+KillerTab:Section({ 
+    Title = "Features Cheat",
+    Icon = "biohazard",
+    TextSize = 17,
+})
+KillerTab:Toggle({
+    Title = "No Flashlight",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state) 
+        
+    end
+})
+KillerTab:Toggle({
+    Title = "Remove All Pallet/Window",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state) 
+        
+    end
+})
+KillerTab:Button({
+    Title = "Third Person Camera for Killer",
+    Desc = "",
+    Locked = false,
+    Callback = function()
+        -- ...
+    end
+})
+KillerTab:Section({ 
+    Title = "Features Hitbox",
+    Icon = "box",
+    TextSize = 17,
+})
+KillerTab:Input({
+    Title = "Set Transparency",
+    Desc = "",
+    Value = "0.95",
+    InputIcon = "",
+    Type = "Input", -- or "Textarea"
+    Placeholder = "..",
+    Callback = function(input) 
+        transparency_hitbox = input
+    end
+})
+KillerTab:Input({
+    Title = "Set Size",
+    Desc = "",
+    Value = "10",
+    InputIcon = "",
+    Type = "Input", -- or "Textarea"
+    Placeholder = "..",
+    Callback = function(input) 
+        hitbox_size = input
+    end
+})
+KillerTab:Toggle({
+    Title = "Enable Hitbox",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state) 
+        hitbox_Enable = state
+    end
+})
+-----------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------
+-----------------------------MAIN
+MainTab:Section({ 
+    Title = "Features Bypass",
+    Icon = "lock-open",
+    TextSize = 17,
+})
+MainTab:Toggle({
+    Title = "Bypass Gate (Open Gate before Game End)",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state) 
+        _G.BypassGate = state
+    end
+})
+MainTab:Section({ 
+    Title = "Features Visual",
+    Icon = "cloud",
+    TextSize = 17,
+})
+MainTab:Toggle({
+    Title = "Full Bright",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state) 
+        _G.FullBright_Enabled = state
+    end
+})
+MainTab:Toggle({
+    Title = "No Fog",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state) 
+        _G.NoFog_Enabled = state
+    end
+})
+MainTab:Section({ 
+    Title = "Misc",
+    Icon = "settings",
+    TextSize = 17,
+})
+MainTab:Toggle({
+    Title = "Anti-AFK",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = true, -- default value
+    Callback = function(state) 
+        AntiAFK_Enabled = state
+    end
+})
+-----------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------
+-----------------------------ESP
+EspTab:Section({ 
+    Title = "Features ESP",
+    Icon = "eye",
+    TextSize = 17,
+})
+EspTab:Toggle({
+    Title = "Enable ESP",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state) 
+        _G.ESP_ENABLED = state
+        _G.Master_ObjectESP = state
+    end
+})
+EspTab:Section({ 
+    Title = "Role",
+    Icon = "user",
+    TextSize = 17,
+})
+EspTab:Toggle({
+    Title = "ESP Survivor",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state) 
+        _G.ESP_TEAM = state
+    end
+})
+EspTab:Toggle({
+    Title = "ESP Killer",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state) 
+        _G.ESP_ENEMY = state
+    end
+})
+EspTab:Section({ 
+    Title = "Engine",
+    Icon = "zap",
+    TextSize = 17,
+})
+EspTab:Toggle({
+    Title = "ESP Generator",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state) 
+        TargetConfigs["Generator"].Enabled = state
+    end
+})
+EspTab:Toggle({
+    Title = "ESP Gate",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state) 
+        TargetConfigs["Gate"].Enabled = state
+    end
+})
+EspTab:Section({ 
+    Title = "Object",
+    Icon = "cuboid",
+    TextSize = 17,
+})
+EspTab:Toggle({
+    Title = "ESP Pallet",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state) 
+        TargetConfigs["Palletwrong"].Enabled = state
+    end
+})
+EspTab:Toggle({
+    Title = "ESP Hook",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state) 
+        TargetConfigs["Hook"].Enabled = state
+    end
+})
+EspTab:Toggle({
+    Title = "ESP Window",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state) 
+        TargetConfigs["Window"].Enabled = state
+    end
+})
+EspTab:Section({ 
+    Title = "Xmas",
+    Icon = "tree-pine",
+    TextSize = 17,
+})
+EspTab:Toggle({
+    Title = "ESP Tree Xmas",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state) 
+        TargetConfigs["ChristmasTree"].Enabled = state
+    end
+})
+EspTab:Toggle({
+    Title = "ESP Gift",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state)   -- Tracer (Gaya script orang tadi)
+        TargetConfigs["Gift"].Enabled = state
+    end
+})
+EspTab:Divider()
+EspTab:Section({ 
+    Title = "ESP Settings",
+    Icon = "settings",
+    TextSize = 17,
+})
+EspTab:Toggle({
+    Title = "ESP Name",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state) 
+        _G.ESP_NAME = state
+    end
+})
+EspTab:Toggle({
+    Title = "ESP Distance",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state)   -- Tracer (Gaya script orang tadi)
+        _G.ESP_DISTANCE = state
+    end
+})
+EspTab:Toggle({
+    Title = "ESP HealthBar",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state) 
+        _G.ESP_HEALTHBAR = state
+    end
+})
+EspTab:Toggle({
+    Title = "ESP Highlight",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state) 
+        _G.ESP_HIGHLIGHT = state
+    end
+})
+EspTab:Toggle({
+    Title = "ESP Box",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state) 
+        _G.ESP_DRAWING_BOX = state
+    end
+})
+EspTab:Toggle({
+    Title = "ESP Tracers",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state) 
+        _G.ESP_TRACERS = state     
+    end
+})
+-----------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------
+-----------------------------PLAYER
+PlayerTab:Section({ 
+    Title = "Features Player",
+    Icon = "rabbit",
+    TextSize = 17,
+})
+PlayerTab:Slider({
+    Title = "Set Speed",
+    Desc = "",
+    
+    -- To make float number supported, 
+    -- make the Step a float number.
+    -- example: Step = 0.1
+    Step = 1,
+    Value = {
+        Min = 1,
+        Max = 125,
+        Default = 1,
+    },
+    Callback = function(value)
+        _G.SmoothSpeed = value
+    end
+})
+PlayerTab:Toggle({
+    Title = "Enable Speed",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state) 
+        _G.SpeedEnabled = state
+    end
+})
+PlayerTab:Section({ 
+    Title = "Features Power",
+    Icon = "battery-charging",
+    TextSize = 17,
+})
+PlayerTab:Toggle({
+    Title = "No Clip",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state) 
+        noclip = state
+    end
+})
+PlayerTab:Toggle({
+    Title = "No Fall",
+    Desc = "",
+    Icon = "",
+    Type = "Toggle",
+    Value = false, -- default value
+    Callback = function(state) 
+        
+    end
+})
+-----------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------
+-----------------------------TELEPORT
+TeleportTab:Section({ 
+    Title = "Features Teleport",
+    Icon = "compass",
+    TextSize = 17,
+})
+TeleportTab:Dropdown({
+    Title = "Select Place: ",
+    Desc = "",
+    Values = { "Lobby", "Game" },
+    Value = "Lobby",
+    Callback = function(option) 
+        
+    end
+})
