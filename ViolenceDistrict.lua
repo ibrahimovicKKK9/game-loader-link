@@ -668,7 +668,7 @@ SurvivorTab:Section({
     TextSize = 17,
 })
 SurvivorTab:Toggle({
-    Title = "Auto SkillCheck (Perfect)",
+    Title = "Auto SkillCheck (Perfect) | IN DEV",
     Desc = "",
     Icon = "",
     Type = "Toggle",
@@ -683,7 +683,7 @@ SurvivorTab:Section({
     TextSize = 17,
 })
 SurvivorTab:Toggle({
-    Title = "Auto SkillCheck (Perfect)",
+    Title = "Auto SkillCheck (Perfect) | IN DEV",
     Desc = "",
     Icon = "",
     Type = "Toggle",
@@ -1141,3 +1141,4 @@ TeleportTab:Dropdown({
         
     end
 })
+
