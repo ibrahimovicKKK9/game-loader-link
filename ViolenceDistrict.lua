@@ -1009,7 +1009,7 @@ EspTab:Toggle({
     Desc = "",
     Icon = "",
     Type = "Toggle",
-    Value = false, -- default value
+    Value = true, -- default value
     Callback = function(state) 
         _G.ESP_NAME = state
     end
@@ -1019,7 +1019,7 @@ EspTab:Toggle({
     Desc = "",
     Icon = "",
     Type = "Toggle",
-    Value = false, -- default value
+    Value = true, -- default value
     Callback = function(state)   -- Tracer (Gaya script orang tadi)
         _G.ESP_DISTANCE = state
     end
@@ -1029,7 +1029,7 @@ EspTab:Toggle({
     Desc = "",
     Icon = "",
     Type = "Toggle",
-    Value = false, -- default value
+    Value = true, -- default value
     Callback = function(state) 
         _G.ESP_HEALTHBAR = state
     end
@@ -1039,7 +1039,7 @@ EspTab:Toggle({
     Desc = "",
     Icon = "",
     Type = "Toggle",
-    Value = false, -- default value
+    Value = true, -- default value
     Callback = function(state) 
         _G.ESP_HIGHLIGHT = state
     end
@@ -1049,7 +1049,7 @@ EspTab:Toggle({
     Desc = "",
     Icon = "",
     Type = "Toggle",
-    Value = false, -- default value
+    Value = true, -- default value
     Callback = function(state) 
         _G.ESP_DRAWING_BOX = state
     end
@@ -1059,7 +1059,7 @@ EspTab:Toggle({
     Desc = "",
     Icon = "",
     Type = "Toggle",
-    Value = false, -- default value
+    Value = true, -- default value
     Callback = function(state) 
         _G.ESP_TRACERS = state     
     end
