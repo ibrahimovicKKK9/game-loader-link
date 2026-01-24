@@ -241,7 +241,7 @@ RunService.RenderStepped:Connect(function(deltaTime)
 end)
 -----------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------
---[[local noclip = false
+local noclip = false
 
 game:GetService("RunService").Stepped:Connect(function()
 	if noclip then
@@ -261,7 +261,7 @@ game:GetService("RunService").Stepped:Connect(function()
 			end
 		end
 	end
-end)]]
+end)
 ----------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------
 local AntiAFK_Enabled = true
@@ -535,6 +535,9 @@ task.spawn(function()
 end)
 -----------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------
+_G.AutoGenerator = false
+_G.AutoHealing = false
+
 local function SolveSkillCheck(eventObject)
     local folder = eventObject.Parent
     if not folder then return end
@@ -1439,7 +1442,7 @@ PlayerTab:Toggle({
     Type = "Toggle",
     Value = false, -- default value
     Callback = function(state) 
-        --noclip = state
+        noclip = state
     end
 })
 PlayerTab:Toggle({
