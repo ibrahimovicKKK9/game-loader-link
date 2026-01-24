@@ -586,7 +586,7 @@ end)
 setreadonly(mt, true)
 
 -- // LISTENER
-for _, subFolder in pairs(RemotesFolder:GetChildren()) do
+for _, subFolder in pairs(Remotes:GetChildren()) do
     local startEvent = subFolder:FindFirstChild("SkillCheckEvent")
     if startEvent then
         startEvent.OnClientEvent:Connect(function()
