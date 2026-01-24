@@ -241,7 +241,7 @@ RunService.RenderStepped:Connect(function(deltaTime)
 end)
 -----------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------
-local noclip = false
+--[[local noclip = false
 
 game:GetService("RunService").Stepped:Connect(function()
 	if noclip then
@@ -261,7 +261,7 @@ game:GetService("RunService").Stepped:Connect(function()
 			end
 		end
 	end
-end)
+end)]]
 ----------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------
 local AntiAFK_Enabled = true
@@ -662,7 +662,7 @@ end)
 local LocateTeleport = "Lobby"
 ---------------------------------------------------------------------------
 ---------------------------------------------------------------------------
---[[local AntiTrap = false
+local AntiTrap = false
 
 local FolderMap = workspace:FindFirstChild("Map")
 
@@ -680,7 +680,7 @@ for _, group in pairs(FolderMap:GetChildren()) do
             end
         end
     end
-end]]
+end
 ---------------------------------------------------------------------------
 ---------------------------------------------------------------------------
 local SetFOVValue = 100
@@ -1059,7 +1059,7 @@ KillerTab:Toggle({
     Type = "Toggle",
     Value = false, -- default value
     Callback = function(state) 
-        --AntiTrap = state
+        AntiTrap = state
     end
 })
 KillerTab:Button({
@@ -1439,11 +1439,7 @@ PlayerTab:Toggle({
     Type = "Toggle",
     Value = false, -- default value
     Callback = function(state) 
-        noclip = state
-
-        if not state then
-            SetCharacterCollision(true)
-        end
+        --noclip = state
     end
 })
 PlayerTab:Toggle({
