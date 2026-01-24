@@ -538,46 +538,53 @@ end)
 _G.AutoGenerator = false
 _G.AutoHealing = false
 
-local function SolveSkillCheck(eventObject)
+-- // FUNGSI SOLVER
+local function SolveSkillCheck(eventObject, ...)
+    local args = {...} -- Menangkap ID dari server
     local folder = eventObject.Parent
     if not folder then return end
     
     local folderName = folder.Name:lower()
-    -- Gunakan nama sesuai temuan: SkillCheckResultEvent
     local resultRemote = folder:FindFirstChild("SkillCheckResultEvent") 
     
     if resultRemote then
-        -- Berdasarkan Cobalt: Mengirim "success", 1, dan object target
-        -- Kita tiru argumen tersebut agar server tidak curiga
+        task.wait(0.15) -- Delay biar gak terlalu mencurigakan
+        
         if string.find(folderName, "generator") and _G.AutoGenerator then
-            resultRemote:FireServer("success", 1) 
-            warn(">>> Cobalt Bypass: Generator Success Sent")
+            -- Kirim balik "success", nilai multiplier (1-2), dan argumen asli dari server
+            resultRemote:FireServer("success", 1, unpack(args)) 
+            warn(">>> Auto Skillcheck: Generator Success")
         elseif string.find(folderName, "healing") and _G.AutoHealing then
-            resultRemote:FireServer("success", 1)
-            warn(">>> Cobalt Bypass: Healing Success Sent")
+            resultRemote:FireServer("success", 1, unpack(args))
+            warn(">>> Auto Skillcheck: Healing Success")
         end
     end
 end
 
--- // METATABLE HOOKING (Mencegat Gagal & Memperbaiki Nama)
+-- // METATABLE HOOKING (Anti Gagal)
 local mt = getrawmetatable(game)
-oldNamecall = mt.__namecall
+local oldNamecall = mt.__namecall
 setreadonly(mt, false)
+
 mt.__namecall = newcclosure(function(self, ...)
     local method = getnamecallmethod()
     local args = {...}
 
-    if method == "FireServer" and _G.AutoGenerator then
-        -- Blokir jika game mencoba mengirim sinyal gagal
+    if not checkcaller() and method == "FireServer" then
+        -- Blokir Sinyal Gagal (Biar kalau telat gak meledak)
         if self.Name == "SkillCheckFailEvent" then
-            return nil
+            if _G.AutoGenerator or _G.AutoHealing then
+                return nil 
+            end
         end
 
-        -- Jika player telat pencet, kita paksa argumennya sesuai data Cobalt
+        -- Paksa Sinyal Result jadi Success
         if self.Name == "SkillCheckResultEvent" then
-            args[1] = "success"
-            args[2] = 2
-            return oldNamecall(self, unpack(args))
+            if (_G.AutoGenerator or _G.AutoHealing) and args[1] ~= "success" then
+                args[1] = "success"
+                args[2] = 2 -- Biasanya 1 atau 2
+                return oldNamecall(self, unpack(args))
+            end
         end
     end
 
@@ -585,12 +592,12 @@ mt.__namecall = newcclosure(function(self, ...)
 end)
 setreadonly(mt, true)
 
--- // LISTENER
+-- // LISTENER (Looping ke semua folder Remotes)
 for _, subFolder in pairs(Remotes:GetChildren()) do
     local startEvent = subFolder:FindFirstChild("SkillCheckEvent")
     if startEvent then
-        startEvent.OnClientEvent:Connect(function()
-            SolveSkillCheck(startEvent)
+        startEvent.OnClientEvent:Connect(function(...)
+            SolveSkillCheck(startEvent, ...) -- Kirim argumen tambahan (...)
         end)
     end
 end
