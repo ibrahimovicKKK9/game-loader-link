@@ -975,6 +975,7 @@ EspTab:Toggle({
     Type = "Toggle",
     Value = true, -- default value
     Callback = function(state) 
-        _G.ESP_TRACERS = state 
+        _G.ESP_TRACERS = state
+        ESP_Tracers = state
     end
 })
